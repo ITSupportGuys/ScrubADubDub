@@ -2,6 +2,7 @@
 # Setup Paths and Vars
 ###########################################################
 $path = (${Env:ProgramFiles(x86)}+'\IT Support Guys\ITS Online Backup\cbb.exe') # Path to CBB
+$jobsPath = (${Env:SystemRoot}+'\LTSvc\scripts\BackupScrubadub\CONFIG\jobs.config') # Path to jobs.config
 $argRead = ('plan -l')
 
 
@@ -22,6 +23,11 @@ $outputStream = $process.StandardOutput.ReadToEnd() | select-string -pattern "..
 #}
 
 
+## Generate and clear the jobs.config file
+$blank = ""
+$blank | Out-File $jobsPath
+
+
 ###########################################################
 # Loop foreach GUID
 ###########################################################
@@ -33,17 +39,8 @@ foreach ($guids in $outputStream.Matches) {
 		## -paa yes										## Tells CBB to run regardless of pass or fail on the job
 	Start-Process -FilePath $path -ArgumentList $argUpdate
 	
-	
 	## Generate jobs.config file
-	if ($guids.Count -gt 0){
-		#if jobs were found write file
-		$jobsPath = (${Env:SystemRoot}+'\LTSvc\scripts\BackupScrubadub\CONFIG\jobs.config')
-		$guids | Out-File $jobsPath
-	}
-	else {
-		#alert setup failed
-		"Job setup failed -- no logs found!" > $alert_file_path
-	}
+	$guids.value | Out-File $jobsPath
 }
 
 
