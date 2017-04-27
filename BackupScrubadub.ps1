@@ -5,7 +5,7 @@ $permissable_errors = 3 #number of counts error has before alert
 
 #important paths
 $error_log_dir = ($Env:ProgramData + "\IT Support Guys\Logs\") #full path to dir containing logs
-$alert_file_path = ($Env:SystemRoot + "\LTSvc\scripts\BACKUP_FAILURE_ALERT.txt") #location of file LT looks for
+$alert_file_path = ($Env:SystemRoot + "\LTSvc\scripts\BackupScrubADub\BACKUP_FAILURE_ALERT.txt") #location of file LT looks for
 
 $config_file_path = ".\CONFIG\jobs.config" #file containing logs to check for
 $ignore_file_path = ".\CONFIG\ignore.config" #file containing errors to ignore
@@ -17,9 +17,8 @@ $fail_tracking_path = ".\LOGS\FailCount.txt" #path of file that counts failures
 ###################################################################################################################################################
 #Script vars
 ###################################################################################################################################################
-$master_alert_log = ((Get-Date).ToString(‘F’) + "`r`n`r`n") #holds log to populate alert (if created)
+$master_alert_log = ((Get-Date).ToString(‘F’) + "`r`n") #holds log to populate alert (if created)
 $alert = $false #marked True to create alert file
-
 
 Write-Host "**************************************************************************************************************************************"
 Write-Host "*                                                          Backup Scrubadub                                                          *"
@@ -47,19 +46,19 @@ Write-Host ("Current fail count: " + $fail_count)
 #Checks for configured jobs and if present loads data
 ###################################################################################################################################################
 
-if ($guids_to_monitor -eq $null){
-     $master_alert_log = ($master_alert_log + "No jobs are configured!")
-    Write-Host "`n*** ERROR: NO JOBS CONFIGURED! ***`n"
+if (($guids_to_monitor -eq $null) -or ($guids_to_monitor.ToString() -replace "\s","" -eq "")){
+     $master_alert_log = ($master_alert_log + "No jobs are configured!`r`n")
+    Write-Host "`r`n*** ERROR: NO JOBS CONFIGURED! ***`r`n"
     $alert = $true
 }
 
 #loads list of files to monitor
 $guids_to_monitor = Get-Content $config_file_path
-Write-Host ("`n*** JOBS TO MONITOR: ***`n" + ($guids_to_monitor | Out-String))
+Write-Host ("`r`n*** JOBS TO MONITOR: ***`r`n" + ($guids_to_monitor | Out-String))
 
 #loads list of errors to ignore
 $errors_to_ignore = Get-Content $ignore_file_path
-Write-Host ("`n*** ERRORS PATTERNS TO IGNORE: ***`n" + ($errors_to_ignore | Out-String))
+Write-Host ("`r`n*** ERRORS PATTERNS TO IGNORE: ***`r`n" + ($errors_to_ignore | Out-String))
 
 #main function
 function process_log ($error_log_file, $guid){
@@ -69,14 +68,14 @@ function process_log ($error_log_file, $guid){
     #function variables
     $new_errors = @() #olds new errors to process
     $error_occurrence = @{} #hash table of "error message : # occurances"
-    $status_log = ((Get-Date).ToString(‘F’) + "`r`n`r`n" + "COUNT  :   ERROR" + "`r`n`r`n") #human readable status count
+    $status_log = ((Get-Date).ToString(‘F’) + "`r`n" + "COUNT  :   ERROR" + "`r`n") #human readable status count
     $job_alert = $false #whether this job is alerting
     $job_alert_log = ""
     Write-Host "**************************************************************************************************************************************"
     Write-Host "*                                                        STARTING LOG PROCESS                                                        *"
     Write-Host "**************************************************************************************************************************************"
 
-    Write-Host ("`n*** LOG TO ANALYZE: ***`n" + ($error_log_file))
+    Write-Host ("`r`n*** LOG TO ANALYZE: ***`r`n" + ($error_log_file))
 
     #loads JSON file as PSCustomObject, adds content to hash table 'error_occurrence' -- if not present creates blank file
     if (Test-Path ($db_file_path)){
@@ -126,7 +125,7 @@ function process_log ($error_log_file, $guid){
         if ($error_occurrence[$old_error] -gt $permissable_errors){
             $job_alert = $true
             $script:alert = $true
-            $job_alert_log = ($job_alert_log + $old_error + " count: " + $error_occurrence[$old_error] + "`r`n`r`n")
+            $job_alert_log = ($job_alert_log + $old_error + " count: " + $error_occurrence[$old_error] + "`r`n")
             }
     }
 
@@ -141,9 +140,9 @@ function process_log ($error_log_file, $guid){
     }
     
     #reviews status
-    Write-Host "`n*** ONGOING ERROR REVIEW: ***`n"
+    Write-Host "`r`n*** ONGOING ERROR REVIEW: ***`r`n"
     $error_occurrence.GetEnumerator() | ForEach-Object{
-    $status_log = ($status_log + [string]$_.Value + "      :   " + $_.Key + "`r`n`r`n")
+    $status_log = ($status_log + [string]$_.Value + "      :   " + $_.Key + "`r`n")
     }
 
     #delete oldest count status log
@@ -189,44 +188,28 @@ $logs_processed = 0
 $guids_to_monitor | ForEach-Object{
     $logs_good = $true
     ###################################################################################################################################################
-    #Checks that logs are present & runs on recently created
+    #Checks that recently created log is present and processes if so
     ###################################################################################################################################################
 
-    #if primary log is present
+    #if the log is present
     if (Test-Path ($error_log_dir + $_ + ".log")){
-        #check last write time is greater than a day ago, if so mark bad
-        if((Get-Item ($error_log_dir + $_ + ".log")).LastWriteTime -lt (Get-Date).AddDays(-1)){ $logs_good = $false }
-    }
-    #else check if older log present
-    elseif(Test-Path ($error_log_dir + $_ + ".log.old")){
-        #check last write time is greater than a day ago, if so mark bad
-        if((Get-Item ($error_log_dir + $_ + ".log.old")).LastWriteTime -lt (Get-Date).AddDays(-1)){ $logs_good = $false }
-    }
-    #else neither log exists, mark bad
-    else{ $logs_good = $false }
-
-    if ($logs_good -eq $true){
-        $log_file = Get-Item ($error_log_dir + $_ + ".log")
-        if($log_file.LastWriteTime -gt (Get-Date).AddMinutes(-5)){ 
-            Write-Host "*** OKAY: " $_ " present and recent! ***"
-            process_log $log_file $_ #actually processes the log
-            $logs_processed += 1
-        }
-    }
-    else{
-        $master_alert_log = ($master_alert_log + $_ + " log missing or outdated!`n")
-        Write-Host "*** ERROR: " $_ " LOG MISSING OR OUTDATED! ***"
-        $alert = $true
+            $log_file = Get-Item ($error_log_dir + $_ + ".log") #get the log
+            #check that the log is sufficiently recent
+            if($log_file.LastWriteTime -gt (Get-Date).AddMinutes(-10)){ 
+                Write-Host "*** OKAY: " $_ " present and recent! ***"
+                process_log $log_file $_ #actually processes the log
+                $logs_processed += 1
+            }
     }
 }
 
 if ($logs_processed -lt 1) {
-        $master_alert_log = ($master_alert_log + $logs_processed + " logs processed!  Sufficiently recent log not found!`n")
+        $master_alert_log = ($master_alert_log + $logs_processed + " logs processed!  Sufficiently recent log not found!`r`n")
         Write-Host "*** ERROR: " $logs_processed " LOGS PROCESSED!  SUFFICIENTLY RECENT LOG NOT FOUND! ***"
         $alert = $true
     }
     elseif ($logs_processed -gt 1){
-        $master_alert_log = ($master_alert_log + $logs_processed + " logs processed!  Too many sufficiently recent logs found!`n")
+        $master_alert_log = ($master_alert_log + $logs_processed + " logs processed!  Too many sufficiently recent logs found!`r`n")
         Write-Host "*** ERROR: " $logs_processed " LOGS PROCESSED!  TOO MANY SUFFICIENTLY RECENT LOGS FOUND! ***"
         $alert = $true
     }
@@ -243,6 +226,5 @@ if($alert){
     $fail_count + 1 | Out-File $fail_tracking_path
     }
 else { $success_count + 1 | Out-File $success_tracking_path }
-
 
 #END
