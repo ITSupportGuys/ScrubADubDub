@@ -194,11 +194,18 @@ $guids_to_monitor | ForEach-Object{
     #if the log is present
     if (Test-Path ($error_log_dir + $_ + ".log")){
             $log_file = Get-Item ($error_log_dir + $_ + ".log") #get the log
-            #check that the log is sufficiently recent
+            #check if the log is sufficiently recent to be current
             if($log_file.LastWriteTime -gt (Get-Date).AddMinutes(-10)){ 
-                Write-Host "*** OKAY: " $_ " present and recent! ***"
+                Write-Host "*** OKAY: " $_ " present and current! ***"
                 process_log $log_file $_ #actually processes the log
                 $logs_processed += 1
+            }
+            #check if the log is sufficiently recent to be correctly running
+            elseif($log_file.LastWriteTime -gt (Get-Date).AddDays(-1)){ Write-Host "*** OKAY: " $_ " present and recent! ***"}
+            else{
+                $master_alert_log = ($master_alert_log + "Sufficiently recent log for " + $_ + "not found!`r`n")
+                Write-Host "*** ERROR: " $logs_processed " SUFFICIENTLY RECENT LOG FOR " $_ " NOT FOUND! ***"
+                $alert = $true
             }
     }
 }
