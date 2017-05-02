@@ -28,7 +28,7 @@ Write-Host "********************************************************************
 #Loads success / fail tracking data
 ###################################################################################################################################################
 
-#TODO -- if counting files do not exist, create with count 0
+#Create success / fail tracking files if not present
 if (!(Test-Path $success_tracking_path)){
     "0" | Out-File $success_tracking_path
 }
