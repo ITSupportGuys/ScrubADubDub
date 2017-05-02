@@ -46,15 +46,15 @@ Write-Host ("Current fail count: " + $fail_count)
 #Checks for configured jobs and if present loads data
 ###################################################################################################################################################
 
+#loads list of files to monitor
+$guids_to_monitor = Get-Content $config_file_path
+Write-Host ("`r`n*** JOBS TO MONITOR: ***`r`n" + ($guids_to_monitor | Out-String))
+
 if (($guids_to_monitor -eq $null) -or ($guids_to_monitor.ToString() -replace "\s","" -eq "")){
      $master_alert_log = ($master_alert_log + "No jobs are configured!`r`n")
     Write-Host "`r`n*** ERROR: NO JOBS CONFIGURED! ***`r`n"
     $alert = $true
 }
-
-#loads list of files to monitor
-$guids_to_monitor = Get-Content $config_file_path
-Write-Host ("`r`n*** JOBS TO MONITOR: ***`r`n" + ($guids_to_monitor | Out-String))
 
 #loads list of errors to ignore
 $errors_to_ignore = Get-Content $ignore_file_path
