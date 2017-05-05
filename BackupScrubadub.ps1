@@ -13,6 +13,22 @@ $ignore_file_path = ".\CONFIG\ignore.config" #file containing errors to ignore
 $success_tracking_path = ".\LOGS\SuccessCount.txt" #path of file that counts successes
 $fail_tracking_path = ".\LOGS\FailCount.txt" #path of file that counts failures
 
+###################################################################################################################################################
+#Create any missing dirs & files
+###################################################################################################################################################
+
+#Create folders
+if (!(Test-Path ".\CONFIG\")) { New-Item ".\CONFIG\" -Type Directory }
+if (!(Test-Path ".\LOGS\")) { New-Item ".\LOGS\" -Type Directory }
+if (!(Test-Path ".\DB\")) { New-Item ".\DB\" -Type Directory }
+
+#Create config if missing
+if (!(Test-Path ".\CONFIG\jobs.config")) { Invoke-Expression ".\UpdateJobs.ps1" | Out-Null }
+if (!(Test-Path ".\CONFIG\ignore.config")) { "" | Out-File $ignore_file_path }
+
+#Create success / fail tracking files if not present
+if (!(Test-Path $success_tracking_path)){ "0" | Out-File $success_tracking_path }
+if (!(Test-Path $fail_tracking_path)){ "0" | Out-File $fail_tracking_path }
 
 ###################################################################################################################################################
 #Script vars
@@ -27,14 +43,6 @@ Write-Host "********************************************************************
 ###################################################################################################################################################
 #Loads success / fail tracking data
 ###################################################################################################################################################
-
-#Create success / fail tracking files if not present
-if (!(Test-Path $success_tracking_path)){
-    "0" | Out-File $success_tracking_path
-}
-if (!(Test-Path $fail_tracking_path)){
-    "0" | Out-File $fail_tracking_path
-}
 
 $success_count = [convert]::ToInt32((Get-Content $success_tracking_path))
 $fail_count = [convert]::ToInt32((Get-Content $fail_tracking_path))
