@@ -5,7 +5,6 @@ $path = (${Env:ProgramFiles(x86)}+'\IT Support Guys\ITS Online Backup\cbb.exe') 
 $jobsPath = (${Env:SystemRoot}+'\LTSvc\scripts\BackupScrubadub\CONFIG\jobs.config') # Path to jobs.config
 $argRead = ('plan -l')
 
-
 ###########################################################
 # Parse CBB Output for GUIDs
 ###########################################################
@@ -14,33 +13,25 @@ $process.StartInfo.UseShellExecute = $false
 $process.StartInfo.RedirectStandardOutput = $true
 $process.StartInfo.FileName = $path
 $process.StartInfo.Arguments = $argRead
-$process.Start()
-$outputStream = $process.StandardOutput.ReadToEnd() | select-string -pattern "........-....-....-....-............" -AllMatches
+$process.Start() > $null
+$outputstream = $process.StandardOutput.ReadToEnd()
+$guids = $outputstream | Select-String -Pattern "........-....-....-....-............" -AllMatches | ForEach-Object { $_.Matches.Value }
 
-## Enable to output GUIDS
-#foreach($var in $outputStream.Matches){
-#    Write-Host $var
-#}
-
-
-## Generate and clear the jobs.config file
-$blank = ""
-$blank | Out-File $jobsPath
-
+## Delete jobs config file if present
+if (Test-Path $jobsPath){ Remove-Item $jobsPath }
 
 ###########################################################
-# Loop foreach GUID
+# Loop for each GUID
 ###########################################################
-foreach ($guids in $outputStream.Matches) {
-	#$guids = '2ddacb3c-f081-4d95-8279-3f8a323440ae' 	## Overwrite for testing a specific GUID
-	$argUpdate = ('editBackupPlan -id '+$guids+' -postAction '+$Env:windir+'\LTSvc\scripts\BackupScrubadub\BackupScrubadub.bat -paa yes')
+foreach ($guid in $guids) {
+	$argUpdate = ('editBackupPlan -id '+$guid+' -postAction '+$Env:windir+'\LTSvc\scripts\BackupScrubadub\BackupScrubadub.bat -paa yes')
 		## 'editBackupPlan -id '+$guids+' 				## Binds the command to the current GUID in the group
 		## -postAction '+$Env:windir+'\LTSvc\...'		## Tells CBB to add the post action oif the scrubadubdub batch file
 		## -paa yes										## Tells CBB to run regardless of pass or fail on the job
 	Start-Process -FilePath $path -ArgumentList $argUpdate
 	
 	## Generate jobs.config file
-	$guids.value | Out-File $jobsPath
+	$guid | Out-File -Append $jobsPath
 }
 
 
