@@ -1,7 +1,7 @@
 #backup checker script
 
 #configurable settings
-$permissable_errors = 3 #number of counts error has before alert
+$permissable_errors = 6 #number of counts error has before alert
 
 #important paths
 $error_log_dir = ($Env:ProgramData + "\IT Support Guys\Logs\") #full path to dir containing logs
