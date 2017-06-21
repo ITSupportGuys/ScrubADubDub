@@ -234,10 +234,14 @@ $guids_to_monitor | ForEach-Object{
             #check if the log is sufficiently recent to be correctly running
             elseif($log_file.LastWriteTime -gt (Get-Date).AddDays(-$permissable_lastrun)){ Write-Host "*** OKAY: " $_ " present and recent! ***"}
             else{
-                $master_alert_log = ($master_alert_log + "Sufficiently recent log for " + $_ + "not found!`r`n")
-                Write-Host "*** ERROR: " $logs_processed " SUFFICIENTLY RECENT LOG FOR " $_ " NOT FOUND! ***"
+                $master_alert_log = ($master_alert_log + "Sufficiently recent log for " + $_ + " not found!`r`n")
+                Write-Host "*** ERROR: SUFFICIENTLY RECENT LOG FOR" $_ "NOT FOUND! ***"
                 $alert = $true
             }
+    }
+    else{ #log is entirely missing
+        $master_alert_log = ($master_alert_log + "Log for " + $_ + " not found!`r`n")
+        Write-Host "*** ERROR: LOG FOR " $_ " NOT FOUND! ***"
     }
 }
 
