@@ -218,41 +218,45 @@ $guids_to_monitor | ForEach-Object{
     $plan_name = (($cbb_plans -split "\r?\n" | Select-String -Pattern $_ -AllMatches -Context 1,0).Context.PreContext[0]).Split("'")[1]
 
     #apply correct lastrun thresholds based on plan name
-    if ($plan_name -match "Consistency check plan"){ $permissable_lastrun = $permissibale_consistency_lastrun; Write-Host $_ "is a consistency check!" }
-    elseif ($plan_name -match "weekly"){ $permissable_lastrun = $permissable_weekly_backup_lastrun; Write-Host $_ "is a weekly backup!" }
-    else{ $permissable_lastrun = $permissable_general_backup_lastrun; Write-Host $_ "is a normal backup!" }
+    if ($plan_name -match "Consistency check plan"){ $permissable_lastrun = $permissibale_consistency_lastrun; Write-Host "'" $plan_name "'" "is a consistency check!" }
+    elseif ($plan_name -match "weekly"){ $permissable_lastrun = $permissable_weekly_backup_lastrun; Write-Host "'" $plan_name "'" "is a weekly backup!" }
+    else{ $permissable_lastrun = $permissable_general_backup_lastrun; Write-Host "'" $plan_name "'" "is a normal backup!" }
 
     #if the log is present
     if (Test-Path ($error_log_dir + $_ + ".log")){
             $log_file = Get-Item ($error_log_dir + $_ + ".log") #get the log
             #check if the log is sufficiently recent to be current
             if($log_file.LastWriteTime -gt (Get-Date).AddMinutes(-5)){ 
-                Write-Host "*** OKAY: " $_ " present and current! ***"
+                Write-Host "*** OKAY: " $plan_name " present and current! ***"
                 process_log $log_file $_ #actually processes the log
                 $logs_processed += 1
             }
             #check if the log is sufficiently recent to be correctly running
-            elseif($log_file.LastWriteTime -gt (Get-Date).AddDays(-$permissable_lastrun)){ Write-Host "*** OKAY: " $_ " present and recent! ***"}
+            elseif($log_file.LastWriteTime -gt (Get-Date).AddDays(-$permissable_lastrun)){ Write-Host "*** OKAY: " $plan_name " present and recent! ***"}
             else{
-                $master_alert_log = ($master_alert_log + "Sufficiently recent log for " + $_ + " not found!`r`n")
-                Write-Host "*** ERROR: SUFFICIENTLY RECENT LOG FOR" $_ "NOT FOUND! ***"
+                $master_alert_log = ($master_alert_log + "Sufficiently recent log for '" + $plan_name + "', GUID: " + $_ + " not found!`r`n")
+                Write-Host "*** ERROR: SUFFICIENTLY RECENT LOG FOR" $plan_name "NOT FOUND! ***"
                 $alert = $true
             }
     }
     else{ #log is entirely missing
-        $master_alert_log = ($master_alert_log + "Log for " + $_ + " not found!`r`n")
-        Write-Host "*** ERROR: LOG FOR " $_ " NOT FOUND! ***"
+        $master_alert_log = ($master_alert_log + "Log for '" + $plan_name + "', GUID: " + $_ + " not found!`r`n")
+        Write-Host "*** ERROR: LOG FOR " $plan_name " NOT FOUND! ***"
     }
 }
 
+Write-Host "**************************************************************************************************************************************"
+Write-Host "*                                          Checking Log Processing Completed!                                                        *"
+Write-Host "**************************************************************************************************************************************"
+
 if ($logs_processed -lt 1) {
         $master_alert_log = ($master_alert_log + $logs_processed + " logs processed!  Sufficiently recent log not found!`r`n")
-        Write-Host "*** ERROR: " $logs_processed " LOGS PROCESSED!  SUFFICIENTLY RECENT LOG NOT FOUND! ***"
+        Write-Host "*** ERROR:" $logs_processed "LOGS PROCESSED!  SUFFICIENTLY RECENT LOG NOT FOUND! ***"
         $alert = $true
     }
     elseif ($logs_processed -gt 1){
         $master_alert_log = ($master_alert_log + $logs_processed + " logs processed!  Too many sufficiently recent logs found!`r`n")
-        Write-Host "*** ERROR: " $logs_processed " LOGS PROCESSED!  TOO MANY SUFFICIENTLY RECENT LOGS FOUND! ***"
+        Write-Host "*** ERROR:" $logs_processed "LOGS PROCESSED!  TOO MANY SUFFICIENTLY RECENT LOGS FOUND! ***"
         $alert = $true
     }
 
